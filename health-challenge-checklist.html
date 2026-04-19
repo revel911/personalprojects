@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Health Challenge · Weekly Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f2eb;
+    --surface: #fff;
+    --border: #e0dbd0;
+    --text: #1a1a18;
+    --muted: #9a9690;
+    --p1: #1a1a18;
+    --p1-light: #f0efe8;
+    --p1-check: #c6f135;
+    --p2: #e8440a;
+    --p2-light: #fef0eb;
+    --p2-check: #ffd4c2;
+    --movement: #2d6a4f;
+    --nutrition: #1d5fa6;
+    --discipline: #6b35b8;
+    --club: #c44b00;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 32px 16px 64px;
+  }
+
+  /* ── Header ── */
+  header {
+    max-width: 960px;
+    margin: 0 auto 32px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .title-block h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 8vw, 72px);
+    letter-spacing: 0.04em;
+    line-height: 0.9;
+    color: var(--text);
+  }
+
+  .title-block p {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  .week-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .week-nav button {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 32px; height: 32px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .week-nav button:hover { background: var(--border); }
+
+  .week-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── Player header ── */
+  .players-bar {
+    max-width: 960px;
+    margin: 0 auto 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .players-bar .spacer { background: var(--surface); border-right: 1px solid var(--border); }
+
+  .player-col {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-right: 1px solid var(--border);
+  }
+  .player-col:last-child { border-right: none; }
+
+  .player-name-wrap { display: flex; align-items: center; gap: 8px; }
+
+  .player-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .p1 .player-dot { background: var(--p1); }
+  .p2 .player-dot { background: var(--p2); }
+
+  .player-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border-bottom: 1px dashed var(--border);
+    outline: none;
+    min-width: 60px;
+  }
+  .player-name:focus { border-bottom-color: var(--text); }
+
+  .player-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+  .p1 .player-score { color: var(--p1); }
+  .p2 .player-score { color: var(--p2); }
+
+  .score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ── Day tabs ── */
+  .day-tabs {
+    max-width: 960px;
+    margin: 0 auto 20px;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .day-tab {
+    cursor: pointer;
+    transition: background 0.12s;
+    border-right: 1px solid var(--border);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+  }
+  .day-tab:last-child { border-right: none; }
+  .day-tab:not(.active):hover { background: #faf9f5; }
+
+  .day-tab .day-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 7px 4px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .day-tab.active .day-name {
+    background: var(--text);
+    color: var(--p1-check);
+    border-bottom-color: var(--text);
+  }
+
+  .day-tab .day-p1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    padding: 6px 4px 5px;
+    border-bottom: 1px solid var(--border);
+    color: var(--p1);
+    line-height: 1;
+  }
+
+  .day-tab .day-p2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    padding: 5px 4px 6px;
+    color: var(--p2);
+    line-height: 1;
+  }
+
+  /* ── Main grid ── */
+  .main {
+    max-width: 960px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 100px 100px;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  /* Category label column */
+  .label-col { border-right: 1px solid var(--border); }
+
+  .cat-header {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .cat-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cat-max {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-top: 1px;
+  }
+
+  .item-label {
+    padding: 10px 16px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--text);
+  }
+
+  .item-label:last-child { border-bottom: none; }
+
+  .item-label small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 8px;
+    padding-left: 8px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  .item-pts {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-left: 10px;
+    padding-left: 8px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+  }
+
+  /* Player check columns */
+  .check-col {
+    border-right: 1px solid var(--border);
+  }
+  .check-col:last-child { border-right: none; }
+
+  .check-cat-header {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cat-subtotal {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.04em;
+  }
+  .p1-col .cat-subtotal { color: var(--p1); }
+  .p2-col .cat-subtotal { color: var(--p2); }
+
+  .cat-subtotal-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  .check-cell {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+    position: relative;
+  }
+  .check-cell:last-child { border-bottom: none; }
+
+  .check-cell:hover { background: var(--bg); }
+
+  .check-box {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+
+  .p1-col .check-cell.checked .check-box {
+    background: var(--p1);
+    border-color: var(--p1);
+    color: var(--p1-check);
+  }
+  .p2-col .check-cell.checked .check-box {
+    background: var(--p2);
+    border-color: var(--p2);
+    color: #fff;
+  }
+
+  /* Section divider row */
+  .section-divider {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Daily total row */
+  .daily-total-row {
+    display: contents;
+  }
+
+  .daily-total-label {
+    padding: 12px 16px;
+    background: var(--text);
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .daily-total-score {
+    padding: 12px 20px;
+    background: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+  .daily-total-score:last-child { border-right: none; }
+
+  .daily-total-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .p1-col .daily-total-num { color: var(--p1-check); }
+  .p2-col .daily-total-num { color: #ff9977; }
+
+  .daily-total-max {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* ── Weekly bonus section ── */
+  .bonus-section {
+    max-width: 960px;
+    margin: 20px auto 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .bonus-section-header {
+    padding: 12px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .bonus-section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.06em;
+  }
+
+  .bonus-section-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .bonus-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .bonus-player {
+    padding: 16px 20px;
+    border-right: 1px solid var(--border);
+  }
+  .bonus-player:last-child { border-right: none; }
+
+  .bonus-player-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .bonus-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+    border-radius: 4px;
+    padding-left: 4px;
+  }
+  .bonus-item:last-child { border-bottom: none; }
+  .bonus-item:hover { background: var(--bg); }
+
+  .bonus-check {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+
+  .bonus-player.p1-bonus .bonus-item.checked .bonus-check {
+    background: var(--p1);
+    border-color: var(--p1);
+    color: var(--p1-check);
+  }
+  .bonus-player.p2-bonus .bonus-item.checked .bonus-check {
+    background: var(--p2);
+    border-color: var(--p2);
+    color: #fff;
+  }
+
+  .bonus-item-text {
+    font-size: 12px;
+    line-height: 1.3;
+    flex: 1;
+  }
+
+  .bonus-item-pts {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .bonus-item.checked .bonus-item-pts { color: var(--text); font-weight: 500; }
+
+  .bonus-total-row {
+    padding: 12px 20px;
+    background: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+  }
+
+  .bonus-total-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .bonus-totals {
+    display: flex;
+    gap: 32px;
+  }
+
+  .bonus-total-item {
+    text-align: right;
+  }
+
+  .bonus-total-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .p1-bonus-total { color: var(--p1-check); }
+  .p2-bonus-total { color: #ff9977; }
+
+  .bonus-total-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Grand total ── */
+  .grand-total {
+    max-width: 960px;
+    margin: 12px auto 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .grand-card {
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--border);
+  }
+  .grand-card.p1-grand { background: var(--p1); border-color: var(--p1); }
+  .grand-card.p2-grand { background: var(--p2); border-color: var(--p2); }
+
+  .grand-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 2px;
+  }
+
+  .grand-breakdown {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.08em;
+  }
+
+  .grand-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: #fff;
+  }
+
+  .grand-max {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    text-align: right;
+    margin-top: 4px;
+  }
+
+  /* ── All-time totals ── */
+  .alltime-bar {
+    max-width: 960px;
+    margin: 12px auto 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .alltime-header {
+    padding: 10px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .alltime-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.06em;
+  }
+
+  .alltime-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .alltime-scores {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .alltime-player {
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-right: 1px solid var(--border);
+  }
+  .alltime-player:last-child { border-right: none; }
+
+  .alltime-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .alltime-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+  .alltime-p1 .alltime-num { color: var(--p1); }
+  .alltime-p2 .alltime-num { color: var(--p2); }
+
+  .alltime-weeks {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .alltime-lead {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .alltime-p1 .alltime-lead { background: var(--p1); color: var(--p1-check); }
+  .alltime-p2 .alltime-lead { background: var(--p2); color: #fff; }
+  .alltime-tied .alltime-lead { background: var(--border); color: var(--muted); }
+
+  /* ── Action bar ── */
+  .action-bar {
+    max-width: 960px;
+    margin: 12px auto 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .action-btn {
+    border-radius: 6px;
+    padding: 9px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid var(--border);
+  }
+
+  .btn-save {
+    background: var(--text);
+    color: var(--p1-check);
+    border-color: var(--text);
+  }
+  .btn-save:hover { opacity: 0.85; }
+
+  .btn-load {
+    background: var(--surface);
+    color: var(--text);
+  }
+  .btn-load:hover { background: var(--border); }
+
+  .btn-reset {
+    background: none;
+    color: var(--muted);
+  }
+  .btn-reset:hover { background: var(--border); color: var(--text); }
+
+  @media (max-width: 600px) {
+    .main { grid-template-columns: 1fr 72px 72px; }
+    .players-bar { grid-template-columns: 1fr 1fr; }
+    .item-label { font-size: 12px; padding: 0 12px; }
+    .cat-header { padding: 10px 12px 8px; }
+    .grand-num { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>Weekly<br>Tracker</h1>
+    <p>Health Challenge · No Streaks · Daily Points</p>
+  </div>
+  <div class="week-nav">
+    <button onclick="changeWeek(-1)">←</button>
+    <span class="week-label" id="weekLabel"></span>
+    <button onclick="changeWeek(1)">→</button>
+  </div>
+</header>
+
+<!-- Player header bar -->
+<div class="players-bar">
+  <div class="player-col p1">
+    <div class="player-name-wrap">
+      <div class="player-dot"></div>
+      <div class="player-name" contenteditable="true" id="p1name" spellcheck="false">Christina</div>
+    </div>
+    <div>
+      <div class="player-score" id="p1WeekScore">0</div>
+      <div class="score-label">week total</div>
+    </div>
+  </div>
+  <div class="player-col p2">
+    <div class="player-name-wrap">
+      <div class="player-dot"></div>
+      <div class="player-name" contenteditable="true" id="p2name" spellcheck="false">Tommy</div>
+    </div>
+    <div>
+      <div class="player-score" id="p2WeekScore">0</div>
+      <div class="score-label">week total</div>
+    </div>
+  </div>
+</div>
+
+<!-- Day tabs -->
+<div class="day-tabs" id="dayTabs"></div>
+
+<!-- Main checklist grid -->
+<div class="main" id="mainGrid"></div>
+
+<!-- Weekly bonuses -->
+<div class="bonus-section">
+  <div class="bonus-section-header">
+    <div>
+      <div class="bonus-section-title">⚡ Weekly Bonuses</div>
+      <div class="bonus-section-sub">Completion-based · earned once per week · max 27 pts each</div>
+    </div>
+  </div>
+  <div class="bonus-grid">
+    <div class="bonus-player p1-bonus" id="p1Bonuses"></div>
+    <div class="bonus-player p2-bonus" id="p2Bonuses"></div>
+  </div>
+  <div class="bonus-total-row">
+    <div class="bonus-total-label">Weekly Bonus Total</div>
+    <div class="bonus-totals">
+      <div class="bonus-total-item">
+        <div class="bonus-total-num p1-bonus-total" id="p1BonusTotal">0</div>
+        <div class="bonus-total-name" id="p1BonusName">P1</div>
+      </div>
+      <div class="bonus-total-item">
+        <div class="bonus-total-num p2-bonus-total" id="p2BonusTotal">0</div>
+        <div class="bonus-total-name" id="p2BonusName">P2</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Grand totals -->
+<div class="grand-total">
+  <div class="grand-card p1-grand">
+    <div>
+      <div class="grand-name" id="p1GrandName">Player 1</div>
+      <div class="grand-breakdown" id="p1Breakdown">0 daily + 0 bonus</div>
+    </div>
+    <div>
+      <div class="grand-num" id="p1Grand">0</div>
+      <div class="grand-max">/ 118 max</div>
+    </div>
+  </div>
+  <div class="grand-card p2-grand">
+    <div>
+      <div class="grand-name" id="p2GrandName">Player 2</div>
+      <div class="grand-breakdown" id="p2Breakdown">0 daily + 0 bonus</div>
+    </div>
+    <div>
+      <div class="grand-num" id="p2Grand">0</div>
+      <div class="grand-max">/ 118 max</div>
+    </div>
+  </div>
+</div>
+
+<!-- All-time totals -->
+<div class="alltime-bar">
+  <div class="alltime-header">
+    <div class="alltime-title">🏆 All-Time Total</div>
+    <div class="alltime-sub" id="alltimeWeeksLabel">across all weeks</div>
+  </div>
+  <div class="alltime-scores">
+    <div class="alltime-player alltime-p1" id="alltimeP1">
+      <div>
+        <div class="alltime-name" id="alltimeP1Name">Player 1</div>
+        <div class="alltime-num" id="alltimeP1Num">0</div>
+        <div class="alltime-weeks" id="alltimeP1Weeks"></div>
+      </div>
+      <div class="alltime-lead" id="alltimeP1Lead" style="display:none">LEADING</div>
+    </div>
+    <div class="alltime-player alltime-p2" id="alltimeP2">
+      <div>
+        <div class="alltime-name" id="alltimeP2Name">Player 2</div>
+        <div class="alltime-num" id="alltimeP2Num">0</div>
+        <div class="alltime-weeks" id="alltimeP2Weeks"></div>
+      </div>
+      <div class="alltime-lead" id="alltimeP2Lead" style="display:none">LEADING</div>
+    </div>
+  </div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+  <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadFromFile(event)">
+  <button class="action-btn btn-reset" onclick="resetDay()">Reset day</button>
+  <button class="action-btn btn-load" onclick="document.getElementById('fileInput').click()">Load save</button>
+  <button class="action-btn btn-save" onclick="saveToFile()">💾 Save file</button>
+</div>
+
+<script>
+const DAYS = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+
+const CATEGORIES = [
+  {
+    name: '🏃 Movement', max: 'max 4 pts/day', color: '#2d6a4f',
+    items: [
+      { label: 'Cardio', sub: '20 min · 120+ bpm', pts: 2 },
+      { label: 'Weights', sub: null, pts: 2 },
+      { label: 'Yoga / Mobility / Balance', sub: 'Pilates, stability, stretching', pts: 2 },
+    ]
+  },
+  {
+    name: '🥗 Nutrition', max: 'max 5 pts/day', color: '#1d5fa6',
+    items: [
+      { label: 'Tracked food', sub: null, pts: 2 },
+      { label: 'Within calorie target', sub: null, pts: 2 },
+      { label: 'Hit protein target', sub: 'muscle preservation over 40', pts: 1 },
+    ]
+  },
+  {
+    name: '🌙 Discipline', max: 'max 2 pts/day', color: '#6b35b8',
+    items: [
+      { label: 'No late snacking', sub: 'stayed in eating window', pts: 1 },
+      { label: '7+ hours sleep', sub: 'recovery is where gains happen', pts: 1 },
+    ]
+  },
+  {
+    name: '💪 100 Club', max: 'max 2 pts/day', color: '#c44b00',
+    items: [
+      { label: '100 reps', sub: null, pts: 1 },
+      { label: '150+ reps', sub: 'counts instead of 100 reps', pts: 2 },
+    ]
+  },
+];
+
+const BONUSES = [
+  { label: 'Cardio ≥ 2 sessions', pts: 3 },
+  { label: 'Weights ≥ 2 sessions', pts: 3 },
+  { label: 'Yoga / Mobility ≥ 2 sessions', pts: 3 },
+  { label: 'Tracked ≥ 5 days', pts: 3 },
+  { label: 'Within calories ≥ 4 days', pts: 3 },
+  { label: 'Hit protein target ≥ 4 days', pts: 3 },
+  { label: 'No late snacking ≥ 5 nights', pts: 3 },
+  { label: '7+ hrs sleep ≥ 5 nights', pts: 3 },
+  { label: '100 Club ≥ 5 days', pts: 3 },
+];
+
+const STORAGE_PREFIX = 'hc_w';
+const META_KEY = 'hc_meta';
+
+let currentWeekOffset = 0;
+let currentDay = 0;
+
+// ── Storage helpers ──
+
+function getWeekStart(offset = currentWeekOffset) {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diff + offset * 7);
+  mon.setHours(0,0,0,0);
+  return mon;
+}
+
+function weekKey(offset = currentWeekOffset) {
+  return `${STORAGE_PREFIX}${getWeekStart(offset).toISOString().slice(0,10)}`;
+}
+
+function loadState(offset = currentWeekOffset) {
+  try { return JSON.parse(localStorage.getItem(weekKey(offset)) || 'null'); } catch { return null; }
+}
+
+function loadMeta() {
+  try { return JSON.parse(localStorage.getItem(META_KEY) || 'null') || { p1name: 'Christina', p2name: 'Tommy' }; } catch { return { p1name: 'Christina', p2name: 'Tommy' }; }
+}
+
+function saveMeta(meta) {
+  try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch {}
+}
+
+function defaultState() {
+  return { checks: {}, bonuses: {} };
+}
+
+let state = loadState() || defaultState();
+let meta = loadMeta();
+
+function saveState() {
+  try { localStorage.setItem(weekKey(), JSON.stringify(state)); } catch {}
+}
+
+// ── All-time aggregation ──
+
+function getAllWeekKeys() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(STORAGE_PREFIX)) keys.push(k);
+  }
+  return keys;
+}
+
+function getAllTimeTotal(player) {
+  const keys = getAllWeekKeys();
+  let total = 0;
+  keys.forEach(k => {
+    try {
+      const s = JSON.parse(localStorage.getItem(k) || 'null');
+      if (!s) return;
+      // daily
+      for (let d = 0; d < 7; d++) {
+        let dayPts = 0;
+        CATEGORIES.forEach((cat, ci) => {
+          let catPts = 0;
+          cat.items.forEach((item, ii) => {
+            if (s.checks[`d${d}_p${player}_c${ci}_i${ii}`]) catPts += item.pts;
+          });
+          if (ci === 0) catPts = Math.min(catPts, 4);
+          dayPts += catPts;
+        });
+        total += Math.min(dayPts, 13);
+      }
+      // bonuses
+      BONUSES.forEach((b, i) => {
+        if (s.bonuses && s.bonuses[`p${player}_b${i}`]) total += b.pts;
+      });
+    } catch {}
+  });
+  return total;
+}
+
+// ── Score helpers ──
+
+function getDayTotal(day, player) {
+  let total = 0;
+  CATEGORIES.forEach((cat, ci) => {
+    let catPts = 0;
+    cat.items.forEach((item, ii) => {
+      if (state.checks[`d${day}_p${player}_c${ci}_i${ii}`]) catPts += item.pts;
+    });
+    if (ci === 0) catPts = Math.min(catPts, 4);
+    total += catPts;
+  });
+  return Math.min(total, 13);
+}
+
+function getCatDayTotal(day, player, catIdx) {
+  const cat = CATEGORIES[catIdx];
+  let total = 0;
+  cat.items.forEach((item, ii) => {
+    if (state.checks[`d${day}_p${player}_c${catIdx}_i${ii}`]) total += item.pts;
+  });
+  if (catIdx === 0) total = Math.min(total, 4);
+  return total;
+}
+
+function getWeekDailyTotal(player) {
+  let t = 0;
+  for (let d = 0; d < 7; d++) t += getDayTotal(d, player);
+  return t;
+}
+
+function getBonusTotal(player) {
+  let t = 0;
+  BONUSES.forEach((b, i) => { if (state.bonuses[`p${player}_b${i}`]) t += b.pts; });
+  return t;
+}
+
+// ── Rendering ──
+
+function renderWeekLabel() {
+  const mon = getWeekStart();
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  document.getElementById('weekLabel').textContent = `${fmt(mon)} – ${fmt(sun)}`;
+}
+
+function renderTabs() {
+  const container = document.getElementById('dayTabs');
+  container.innerHTML = '';
+  DAYS.forEach((day, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'day-tab' + (i === currentDay ? ' active' : '');
+    const pts1 = getDayTotal(i, 0);
+    const pts2 = getDayTotal(i, 1);
+    tab.innerHTML = `
+      <div class="day-name">${day}</div>
+      <div class="day-p1">${pts1}</div>
+      <div class="day-p2">${pts2}</div>`;
+    tab.onclick = () => { currentDay = i; renderAll(); };
+    container.appendChild(tab);
+  });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('mainGrid');
+  grid.innerHTML = '';
+
+  CATEGORIES.forEach((cat, ci) => {
+    const labelHeader = document.createElement('div');
+    labelHeader.className = 'label-col cat-header';
+    labelHeader.innerHTML = `<div class="cat-name">${cat.name}</div><div class="cat-max">${cat.max}</div>`;
+    grid.appendChild(labelHeader);
+
+    [0, 1].forEach(p => {
+      const hdr = document.createElement('div');
+      hdr.className = `check-col p${p+1}-col check-cat-header`;
+      const catPts = getCatDayTotal(currentDay, p, ci);
+      hdr.innerHTML = `<div><div class="cat-subtotal-label">today</div><div class="cat-subtotal">${catPts}</div></div>`;
+      grid.appendChild(hdr);
+    });
+
+    cat.items.forEach((item, ii) => {
+      const labelCell = document.createElement('div');
+      labelCell.className = 'label-col item-label';
+      labelCell.innerHTML = `${item.label}${item.sub ? `<small>${item.sub}</small>` : ''}<span class="item-pts">+${item.pts}</span>`;
+      grid.appendChild(labelCell);
+
+      [0, 1].forEach(p => {
+        const key = `d${currentDay}_p${p}_c${ci}_i${ii}`;
+        const cell = document.createElement('div');
+        cell.className = `check-col p${p+1}-col check-cell${state.checks[key] ? ' checked' : ''}`;
+        cell.innerHTML = `<div class="check-box">${state.checks[key] ? '✓' : ''}</div>`;
+        cell.onclick = () => { state.checks[key] = !state.checks[key]; saveState(); renderAll(); };
+        grid.appendChild(cell);
+      });
+    });
+  });
+
+  const tlLabel = document.createElement('div');
+  tlLabel.className = 'daily-total-label';
+  tlLabel.textContent = 'Day Total';
+  grid.appendChild(tlLabel);
+
+  [0, 1].forEach(p => {
+    const tlScore = document.createElement('div');
+    tlScore.className = `daily-total-score check-col p${p+1}-col`;
+    const pts = getDayTotal(currentDay, p);
+    tlScore.innerHTML = `<div class="daily-total-num">${pts}</div><div class="daily-total-max">/ 13 pts</div>`;
+    grid.appendChild(tlScore);
+  });
+}
+
+function renderBonuses() {
+  [0, 1].forEach(p => {
+    const container = document.getElementById(`p${p+1}Bonuses`);
+    const name = p === 0 ? meta.p1name : meta.p2name;
+    container.innerHTML = `<div class="bonus-player-name"><span style="width:8px;height:8px;border-radius:50%;background:${p===0?'var(--p1)':'var(--p2)'};display:inline-block;margin-right:6px;"></span>${name}</div>`;
+
+    BONUSES.forEach((b, i) => {
+      const key = `p${p}_b${i}`;
+      const checked = !!state.bonuses[key];
+      const item = document.createElement('div');
+      item.className = 'bonus-item' + (checked ? ' checked' : '');
+      item.innerHTML = `<div class="bonus-check">${checked ? '✓' : ''}</div><div class="bonus-item-text">${b.label}</div><div class="bonus-item-pts">+${b.pts}</div>`;
+      item.onclick = () => { state.bonuses[key] = !state.bonuses[key]; saveState(); renderAll(); };
+      container.appendChild(item);
+    });
+
+    document.getElementById(`p${p+1}BonusTotal`).textContent = getBonusTotal(p);
+    document.getElementById(`p${p+1}BonusName`).textContent = name;
+  });
+}
+
+function renderScores() {
+  [0, 1].forEach(p => {
+    const daily = getWeekDailyTotal(p);
+    const bonus = getBonusTotal(p);
+    const grand = daily + bonus;
+    const name = p === 0 ? meta.p1name : meta.p2name;
+    document.getElementById(`p${p+1}WeekScore`).textContent = grand;
+    document.getElementById(`p${p+1}Grand`).textContent = grand;
+    document.getElementById(`p${p+1}GrandName`).textContent = name;
+    document.getElementById(`p${p+1}Breakdown`).textContent = `${daily} daily + ${bonus} bonus`;
+  });
+}
+
+function renderAllTime() {
+  const keys = getAllWeekKeys();
+  const weekCount = keys.length;
+  const t1 = getAllTimeTotal(0);
+  const t2 = getAllTimeTotal(1);
+
+  document.getElementById('alltimeP1Name').textContent = meta.p1name;
+  document.getElementById('alltimeP2Name').textContent = meta.p2name;
+  document.getElementById('alltimeP1Num').textContent = t1;
+  document.getElementById('alltimeP2Num').textContent = t2;
+  document.getElementById('alltimeWeeksLabel').textContent = `across ${weekCount} week${weekCount !== 1 ? 's' : ''}`;
+
+  const diff1 = t1 - t2;
+  const diff2 = t2 - t1;
+  document.getElementById('alltimeP1Lead').style.display = t1 > t2 ? '' : 'none';
+  document.getElementById('alltimeP1Lead').textContent = `+${diff1} AHEAD`;
+  document.getElementById('alltimeP2Lead').style.display = t2 > t1 ? '' : 'none';
+  document.getElementById('alltimeP2Lead').textContent = `+${diff2} AHEAD`;
+
+  const p1weeks = `${t1} pts total`;
+  const p2weeks = `${t2} pts total`;
+  document.getElementById('alltimeP1Weeks').textContent = p1weeks;
+  document.getElementById('alltimeP2Weeks').textContent = p2weeks;
+}
+
+function renderAll() {
+  renderWeekLabel();
+  renderTabs();
+  renderGrid();
+  renderBonuses();
+  renderScores();
+  renderAllTime();
+  // sync name displays
+  document.getElementById('p1name').textContent = meta.p1name;
+  document.getElementById('p2name').textContent = meta.p2name;
+}
+
+// ── Navigation ──
+
+function changeWeek(dir) {
+  currentWeekOffset += dir;
+  state = loadState() || defaultState();
+  currentDay = 0;
+  renderAll();
+}
+
+function resetDay() {
+  if (!confirm(`Reset all checks for ${DAYS[currentDay]}?`)) return;
+  CATEGORIES.forEach((cat, ci) => {
+    cat.items.forEach((_, ii) => {
+      delete state.checks[`d${currentDay}_p0_c${ci}_i${ii}`];
+      delete state.checks[`d${currentDay}_p1_c${ci}_i${ii}`];
+    });
+  });
+  saveState();
+  renderAll();
+}
+
+// ── Save / Load ──
+
+function saveToFile() {
+  const allData = { meta, weeks: {} };
+  getAllWeekKeys().forEach(k => {
+    try { allData.weeks[k] = JSON.parse(localStorage.getItem(k)); } catch {}
+  });
+  // also save current unsaved state just in case
+  allData.weeks[weekKey()] = state;
+
+  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `health-challenge-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Flash button feedback
+  const btn = document.querySelector('.btn-save');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Saved!';
+  setTimeout(() => btn.textContent = orig, 1500);
+}
+
+function loadFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.weeks) throw new Error('Invalid file');
+      // Clear existing hc_ keys
+      const toDelete = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith(STORAGE_PREFIX) || k === META_KEY)) toDelete.push(k);
+      }
+      toDelete.forEach(k => localStorage.removeItem(k));
+      // Write loaded data
+      if (data.meta) { meta = data.meta; saveMeta(meta); }
+      Object.entries(data.weeks).forEach(([k, v]) => {
+        localStorage.setItem(k, JSON.stringify(v));
+      });
+      state = loadState() || defaultState();
+      renderAll();
+      alert('Save file loaded successfully!');
+    } catch {
+      alert('Could not load file. Make sure it\'s a valid health challenge save.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ── Player names ──
+
+['p1name','p2name'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    if (id === 'p1name') meta.p1name = el.textContent;
+    else meta.p2name = el.textContent;
+    saveMeta(meta);
+    renderBonuses();
+    renderScores();
+    renderAllTime();
+  });
+});
+
+// ── Init ──
+
+(function() {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const todayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  if (currentWeekOffset === 0) currentDay = todayIdx;
+})();
+
+renderAll();
+</script>
+</body>
+</html>
