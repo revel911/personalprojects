@@ -866,10 +866,7 @@
 
 <!-- Action bar -->
 <div class="action-bar">
-  <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadFromFile(event)">
   <button class="action-btn btn-reset" onclick="resetDay()">Reset day</button>
-  <button class="action-btn btn-load" onclick="document.getElementById('fileInput').click()">Load save</button>
-  <button class="action-btn btn-save" onclick="saveToFile()">💾 Save file</button>
 </div>
 
 <script>
@@ -927,7 +924,7 @@ let currentDay = 0;
 
 // ── Google Sheets Sync ──
 
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxsMHwhEGwuwkXTgexswrPbi-6VBpOSz_6a7cU-8PhpofM3aNajyzcpTk6vvBMgriyt/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzdNYKPu0WFRkNhrOgPzT2S8GrL-u4pRMPMnilRGbdZXSuOY0BtAZvz5PLhev2LrGpW/exec';
 
 let syncStatus = 'idle'; // idle | syncing | error
 
@@ -940,20 +937,25 @@ function setSyncStatus(status, msg) {
   el.className = 'sync-status ' + status;
 }
 
-async function pushToSheets(allData) {
-  setSyncStatus('syncing', 'Saving...');
-  try {
-    await fetch(SHEETS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(allData)
-    });
-    setSyncStatus('saved', 'Saved');
-    setTimeout(() => setSyncStatus('idle', 'Synced'), 2000);
-  } catch(e) {
-    setSyncStatus('error', 'Sync failed');
-  }
+let pushTimer = null;
+function pushToSheets(allData) {
+  // Debounce rapid saves by 800ms
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    setSyncStatus('syncing', 'Saving...');
+    try {
+      // Encode data as URL param for no-cors GET (Apps Script reads ?data=...)
+      const encoded = encodeURIComponent(JSON.stringify(allData));
+      await fetch(SHEETS_URL + '?action=save&data=' + encoded, {
+        method: 'GET',
+        mode: 'no-cors'
+      });
+      setSyncStatus('saved', 'Saved');
+      setTimeout(() => setSyncStatus('idle', 'Synced'), 2000);
+    } catch(e) {
+      setSyncStatus('error', 'Sync failed');
+    }
+  }, 800);
 }
 
 async function pullFromSheets() {
