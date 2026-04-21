@@ -749,7 +749,7 @@
     <h1>Weekly<br>Tracker</h1>
     <p>Health Challenge · No Streaks · Daily Points</p>
   </div>
-  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+  <div style="display:flex;flex-direction:row;align-items:center;gap:12px;flex-wrap:nowrap;">
     <div class="week-nav">
       <button onclick="changeWeek(-1)">←</button>
       <span class="week-label" id="weekLabel"></span>
@@ -1047,11 +1047,11 @@ function weekKey(offset = currentWeekOffset) {
 }
 
 function loadState(offset = currentWeekOffset) {
-  try { return JSON.parse(localStorage.getItem(weekKey(offset)) || 'null'); } catch { return null; }
+  try { return normalizeState(JSON.parse(localStorage.getItem(weekKey(offset)) || 'null')); } catch { return null; }
 }
 
 function loadMeta() {
-  try { return JSON.parse(localStorage.getItem(META_KEY) || 'null') || { p1name: 'Christina', p2name: 'Tommy' }; } catch { return { p1name: 'Christina', p2name: 'Tommy' }; }
+  try { return normalizeMeta(JSON.parse(localStorage.getItem(META_KEY) || 'null')); } catch { return { p1name: 'Christina', p2name: 'Tommy' }; }
 }
 
 function saveMeta(m) {
@@ -1061,6 +1061,25 @@ function saveMeta(m) {
 
 function defaultState() {
   return { checks: {}, bonuses: {} };
+}
+
+// Firebase Realtime DB silently drops empty objects, so anything we read back
+// might be missing 'checks' or 'bonuses'. Normalize on every load to guarantee shape.
+function normalizeState(s) {
+  if (!s || typeof s !== 'object') return null;
+  return {
+    checks: (s.checks && typeof s.checks === 'object') ? s.checks : {},
+    bonuses: (s.bonuses && typeof s.bonuses === 'object') ? s.bonuses : {}
+  };
+}
+
+function normalizeMeta(m) {
+  const def = { p1name: 'Christina', p2name: 'Tommy' };
+  if (!m || typeof m !== 'object') return def;
+  return {
+    p1name: (typeof m.p1name === 'string' && m.p1name.trim()) ? m.p1name : def.p1name,
+    p2name: (typeof m.p2name === 'string' && m.p2name.trim()) ? m.p2name : def.p2name
+  };
 }
 
 let state = loadState() || defaultState();
