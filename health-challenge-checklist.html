@@ -876,7 +876,7 @@ const DAYS = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
 
 const CATEGORIES = [
   {
-    name: '🏃 Movement', max: 'max 4 pts/day', color: '#2d6a4f',
+    name: '🏃 Movement', max: 'max 4 pts/day', maxPts: 4, color: '#2d6a4f',
     items: [
       { label: 'Cardio', sub: '20 min · 120+ bpm', pts: 2 },
       { label: 'Weights', sub: null, pts: 2 },
@@ -885,23 +885,24 @@ const CATEGORIES = [
     ]
   },
   {
-    name: '🥗 Nutrition', max: 'max 5 pts/day', color: '#1d5fa6',
+    name: '🥗 Nutrition', max: 'max 5 pts/day', maxPts: 5, color: '#1d5fa6',
     items: [
       { label: 'Tracked food', sub: null, pts: 2 },
       { label: 'Within calorie target', sub: null, pts: 2 },
       { label: 'Hit protein target', sub: 'muscle preservation over 40', pts: 1 },
       { label: 'Drink 8 glasses of water', sub: '8 glasses or 64 oz daily', pts: 2 },
+      { label: 'Took vitamins', sub: null, pts: 1 },
     ]
   },
   {
-    name: '🌙 Discipline', max: 'max 2 pts/day', color: '#6b35b8',
+    name: '🌙 Discipline', max: 'max 2 pts/day', maxPts: 2, color: '#6b35b8',
     items: [
       { label: 'No late snacking', sub: 'stayed in eating window', pts: 1 },
       { label: '7+ hours sleep', sub: 'recovery is where gains happen', pts: 1 },
     ]
   },
   {
-    name: '💪 100 Club', max: 'max 2 pts/day', color: '#c44b00',
+    name: '💪 100 Club', max: 'max 2 pts/day', maxPts: 2, color: '#c44b00',
     items: [
       { label: '100 reps', sub: null, pts: 1 },
       { label: '150+ reps', sub: 'counts instead of 100 reps', pts: 2 },
@@ -1116,7 +1117,7 @@ function getAllTimeTotal(player) {
           cat.items.forEach((item, ii) => {
             if (s.checks[`d${d}_p${player}_c${ci}_i${ii}`]) catPts += item.pts;
           });
-          if (ci === 0) catPts = Math.min(catPts, 4);
+          catPts = Math.min(catPts, cat.maxPts);
           dayPts += catPts;
         });
         total += Math.min(dayPts, 13);
@@ -1139,7 +1140,7 @@ function getDayTotal(day, player) {
     cat.items.forEach((item, ii) => {
       if (state.checks[`d${day}_p${player}_c${ci}_i${ii}`]) catPts += item.pts;
     });
-    if (ci === 0) catPts = Math.min(catPts, 4);
+    catPts = Math.min(catPts, cat.maxPts);
     total += catPts;
   });
   return Math.min(total, 13);
@@ -1151,8 +1152,7 @@ function getCatDayTotal(day, player, catIdx) {
   cat.items.forEach((item, ii) => {
     if (state.checks[`d${day}_p${player}_c${catIdx}_i${ii}`]) total += item.pts;
   });
-  if (catIdx === 0) total = Math.min(total, 4);
-  return total;
+  return Math.min(total, cat.maxPts);
 }
 
 function getWeekDailyTotal(player) {
