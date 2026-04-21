@@ -825,7 +825,7 @@
     </div>
     <div>
       <div class="grand-num" id="p1Grand">0</div>
-      <div class="grand-max">/ 118 max</div>
+      <div class="grand-max" id="p1GrandMax">/ 0 max</div>
     </div>
   </div>
   <div class="grand-card p2-grand">
@@ -835,7 +835,7 @@
     </div>
     <div>
       <div class="grand-num" id="p2Grand">0</div>
-      <div class="grand-max">/ 118 max</div>
+      <div class="grand-max" id="p2GrandMax">/ 0 max</div>
     </div>
   </div>
 </div>
@@ -885,7 +885,7 @@ const CATEGORIES = [
     ]
   },
   {
-    name: '🥗 Nutrition', max: 'max 5 pts/day', maxPts: 5, color: '#1d5fa6',
+    name: '🥗 Nutrition', max: 'max 6 pts/day', maxPts: 6, color: '#1d5fa6',
     items: [
       { label: 'Tracked food', sub: null, pts: 2 },
       { label: 'Within calorie target', sub: null, pts: 2 },
@@ -918,6 +918,8 @@ const BONUSES = [
   { label: '7+ hrs sleep ≥ 5 nights', pts: 3 },
   { label: '100 Club ≥ 5 days', pts: 3 },
 ];
+
+const DAILY_MAX = CATEGORIES.reduce((sum, c) => sum + c.maxPts, 0);
 
 const STORAGE_PREFIX = 'hc_w';
 const META_KEY = 'hc_meta';
@@ -1120,7 +1122,7 @@ function getAllTimeTotal(player) {
           catPts = Math.min(catPts, cat.maxPts);
           dayPts += catPts;
         });
-        total += Math.min(dayPts, 13);
+        total += Math.min(dayPts, DAILY_MAX);
       }
       // bonuses
       BONUSES.forEach((b, i) => {
@@ -1143,7 +1145,7 @@ function getDayTotal(day, player) {
     catPts = Math.min(catPts, cat.maxPts);
     total += catPts;
   });
-  return Math.min(total, 13);
+  return Math.min(total, DAILY_MAX);
 }
 
 function getCatDayTotal(day, player, catIdx) {
@@ -1237,7 +1239,7 @@ function renderGrid() {
     const tlScore = document.createElement('div');
     tlScore.className = `daily-total-score check-col p${p+1}-col`;
     const pts = getDayTotal(currentDay, p);
-    tlScore.innerHTML = `<div class="daily-total-num">${pts}</div><div class="daily-total-max">/ 13 pts</div>`;
+    tlScore.innerHTML = `<div class="daily-total-num">${pts}</div><div class="daily-total-max">/ ${DAILY_MAX} pts</div>`;
     grid.appendChild(tlScore);
   });
 }
@@ -1264,6 +1266,8 @@ function renderBonuses() {
 }
 
 function renderScores() {
+  const bonusMax = BONUSES.reduce((s, b) => s + b.pts, 0);
+  const grandMax = DAILY_MAX * 7 + bonusMax;
   [0, 1].forEach(p => {
     const daily = getWeekDailyTotal(p);
     const bonus = getBonusTotal(p);
@@ -1273,6 +1277,7 @@ function renderScores() {
     document.getElementById(`p${p+1}Grand`).textContent = grand;
     document.getElementById(`p${p+1}GrandName`).textContent = name;
     document.getElementById(`p${p+1}Breakdown`).textContent = `${daily} daily + ${bonus} bonus`;
+    document.getElementById(`p${p+1}GrandMax`).textContent = `/ ${grandMax} max`;
   });
 }
 
