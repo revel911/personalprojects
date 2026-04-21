@@ -721,6 +721,23 @@
     .cat-header { padding: 10px 12px 8px; }
     .grand-num { font-size: 36px; }
   }
+
+  /* ── Sync status ── */
+  .sync-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .sync-status.saved { color: #2d6a4f; border-color: #2d6a4f33; background: #f0faf5; }
+  .sync-status.syncing { color: var(--muted); }
+  .sync-status.error { color: var(--p2); border-color: var(--p2); }
+
 </style>
 </head>
 <body>
@@ -730,10 +747,13 @@
     <h1>Weekly<br>Tracker</h1>
     <p>Health Challenge · No Streaks · Daily Points</p>
   </div>
-  <div class="week-nav">
-    <button onclick="changeWeek(-1)">←</button>
-    <span class="week-label" id="weekLabel"></span>
-    <button onclick="changeWeek(1)">→</button>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+    <div class="week-nav">
+      <button onclick="changeWeek(-1)">←</button>
+      <span class="week-label" id="weekLabel"></span>
+      <button onclick="changeWeek(1)">→</button>
+    </div>
+    <span class="sync-status" id="syncStatus">☁️ Connecting...</span>
   </div>
 </header>
 
@@ -905,6 +925,66 @@ const META_KEY = 'hc_meta';
 let currentWeekOffset = 0;
 let currentDay = 0;
 
+// ── Google Sheets Sync ──
+
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxsMHwhEGwuwkXTgexswrPbi-6VBpOSz_6a7cU-8PhpofM3aNajyzcpTk6vvBMgriyt/exec';
+
+let syncStatus = 'idle'; // idle | syncing | error
+
+function setSyncStatus(status, msg) {
+  syncStatus = status;
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const icons = { idle: '☁️', syncing: '🔄', saved: '✓', error: '⚠️' };
+  el.textContent = (icons[status] || '') + ' ' + (msg || '');
+  el.className = 'sync-status ' + status;
+}
+
+async function pushToSheets(allData) {
+  setSyncStatus('syncing', 'Saving...');
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(allData)
+    });
+    setSyncStatus('saved', 'Saved');
+    setTimeout(() => setSyncStatus('idle', 'Synced'), 2000);
+  } catch(e) {
+    setSyncStatus('error', 'Sync failed');
+  }
+}
+
+async function pullFromSheets() {
+  setSyncStatus('syncing', 'Loading...');
+  try {
+    const res = await fetch(SHEETS_URL + '?t=' + Date.now());
+    const data = await res.json();
+    if (data && data.weeks) {
+      // Merge into localStorage
+      if (data.meta) { localStorage.setItem(META_KEY, JSON.stringify(data.meta)); }
+      Object.entries(data.weeks).forEach(([k, v]) => {
+        localStorage.setItem(k, JSON.stringify(v));
+      });
+    }
+    setSyncStatus('idle', 'Synced');
+    return data;
+  } catch(e) {
+    setSyncStatus('error', 'Offline');
+    return null;
+  }
+}
+
+function getAllSheetData() {
+  const allData = { meta, weeks: {} };
+  getAllWeekKeys().forEach(k => {
+    try { allData.weeks[k] = JSON.parse(localStorage.getItem(k)); } catch {}
+  });
+  allData.weeks[weekKey()] = state;
+  return allData;
+}
+
 // ── Storage helpers ──
 
 function getWeekStart(offset = currentWeekOffset) {
@@ -929,8 +1009,9 @@ function loadMeta() {
   try { return JSON.parse(localStorage.getItem(META_KEY) || 'null') || { p1name: 'Christina', p2name: 'Tommy' }; } catch { return { p1name: 'Christina', p2name: 'Tommy' }; }
 }
 
-function saveMeta(meta) {
-  try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch {}
+function saveMeta(m) {
+  try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch {}
+  pushToSheets(getAllSheetData());
 }
 
 function defaultState() {
@@ -942,6 +1023,7 @@ let meta = loadMeta();
 
 function saveState() {
   try { localStorage.setItem(weekKey(), JSON.stringify(state)); } catch {}
+  pushToSheets(getAllSheetData());
 }
 
 // ── All-time aggregation ──
@@ -1268,7 +1350,25 @@ function loadFromFile(event) {
   if (currentWeekOffset === 0) currentDay = todayIdx;
 })();
 
+// Pull from Sheets on load, then re-render with latest data
 renderAll();
+pullFromSheets().then(data => {
+  if (data) {
+    state = loadState() || defaultState();
+    meta = loadMeta();
+    renderAll();
+  }
+});
+
+// Auto-refresh every 30 seconds
+setInterval(async () => {
+  const data = await pullFromSheets();
+  if (data) {
+    state = loadState() || defaultState();
+    meta = loadMeta();
+    renderAll();
+  }
+}, 30000);
 </script>
 </body>
 </html>
