@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Health Challenge · Weekly Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
   :root {
     --bg: #f5f2eb;
@@ -922,11 +924,25 @@ const META_KEY = 'hc_meta';
 let currentWeekOffset = 0;
 let currentDay = 0;
 
-// ── Google Sheets Sync ──
+// ── Firebase Realtime Database Sync ──
 
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzdNYKPu0WFRkNhrOgPzT2S8GrL-u4pRMPMnilRGbdZXSuOY0BtAZvz5PLhev2LrGpW/exec';
+const firebaseConfig = {
+  apiKey: "AIzaSyAmKd75of6GIitkVT_AyCSjpxf9tuKz_Uw",
+  authDomain: "health-tracker-bdb11.firebaseapp.com",
+  databaseURL: "https://health-tracker-bdb11-default-rtdb.firebaseio.com",
+  projectId: "health-tracker-bdb11",
+  storageBucket: "health-tracker-bdb11.firebasestorage.app",
+  messagingSenderId: "765649450772",
+  appId: "1:765649450772:web:50f4341dc2b26b629ef401"
+};
 
-let syncStatus = 'idle'; // idle | syncing | error
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dataRef = db.ref('health-tracker');
+
+let syncStatus = 'idle';
+let isApplyingRemote = false; // prevents echo loop when our own writes come back via the listener
+let firstSnapshot = true;
 
 function setSyncStatus(status, msg) {
   syncStatus = status;
@@ -938,54 +954,81 @@ function setSyncStatus(status, msg) {
 }
 
 let pushTimer = null;
-function pushToSheets(allData) {
-  // Debounce rapid saves by 800ms
+function pushState() {
+  if (isApplyingRemote) return;
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(async () => {
+  pushTimer = setTimeout(() => {
     setSyncStatus('syncing', 'Saving...');
-    try {
-      // Encode data as URL param for no-cors GET (Apps Script reads ?data=...)
-      const encoded = encodeURIComponent(JSON.stringify(allData));
-      await fetch(SHEETS_URL + '?action=save&data=' + encoded, {
-        method: 'GET',
-        mode: 'no-cors'
+    dataRef.child('weeks').child(weekKey()).set(state)
+      .then(() => {
+        setSyncStatus('saved', 'Saved');
+        setTimeout(() => { if (syncStatus === 'saved') setSyncStatus('idle', 'Synced'); }, 1500);
+      })
+      .catch(e => {
+        console.error('Firebase save error:', e);
+        setSyncStatus('error', 'Sync failed');
       });
-      setSyncStatus('saved', 'Saved');
-      setTimeout(() => setSyncStatus('idle', 'Synced'), 2000);
-    } catch(e) {
-      setSyncStatus('error', 'Sync failed');
-    }
-  }, 800);
+  }, 300);
 }
 
-async function pullFromSheets() {
-  setSyncStatus('syncing', 'Loading...');
+let metaPushTimer = null;
+function pushMeta() {
+  if (isApplyingRemote) return;
+  clearTimeout(metaPushTimer);
+  metaPushTimer = setTimeout(() => {
+    setSyncStatus('syncing', 'Saving...');
+    dataRef.child('meta').set(meta)
+      .then(() => {
+        setSyncStatus('saved', 'Saved');
+        setTimeout(() => { if (syncStatus === 'saved') setSyncStatus('idle', 'Synced'); }, 1500);
+      })
+      .catch(e => {
+        console.error('Firebase meta save error:', e);
+        setSyncStatus('error', 'Sync failed');
+      });
+  }, 500);
+}
+
+function applyRemoteSnapshot(data) {
+  isApplyingRemote = true;
   try {
-    const res = await fetch(SHEETS_URL + '?t=' + Date.now());
-    const data = await res.json();
+    if (data && data.meta) {
+      meta = data.meta;
+      try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch {}
+    }
+    // Wipe local week cache and rewrite from remote (remote is source of truth)
+    const toDelete = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(STORAGE_PREFIX)) toDelete.push(k);
+    }
+    toDelete.forEach(k => localStorage.removeItem(k));
+
     if (data && data.weeks) {
-      // Merge into localStorage
-      if (data.meta) { localStorage.setItem(META_KEY, JSON.stringify(data.meta)); }
       Object.entries(data.weeks).forEach(([k, v]) => {
-        localStorage.setItem(k, JSON.stringify(v));
+        try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
       });
     }
-    setSyncStatus('idle', 'Synced');
-    return data;
-  } catch(e) {
-    setSyncStatus('error', 'Offline');
-    return null;
+
+    state = loadState() || defaultState();
+    renderAll();
+  } finally {
+    isApplyingRemote = false;
   }
 }
 
-function getAllSheetData() {
-  const allData = { meta, weeks: {} };
-  getAllWeekKeys().forEach(k => {
-    try { allData.weeks[k] = JSON.parse(localStorage.getItem(k)); } catch {}
-  });
-  allData.weeks[weekKey()] = state;
-  return allData;
-}
+// Live subscription — fires on initial load AND on every change from any device
+dataRef.on('value', snapshot => {
+  const data = snapshot.val();
+  applyRemoteSnapshot(data || {});
+  if (firstSnapshot) {
+    firstSnapshot = false;
+    setSyncStatus('idle', 'Synced');
+  }
+}, error => {
+  console.error('Firebase subscription error:', error);
+  setSyncStatus('error', 'Offline — using local data');
+});
 
 // ── Storage helpers ──
 
@@ -1013,7 +1056,7 @@ function loadMeta() {
 
 function saveMeta(m) {
   try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch {}
-  pushToSheets(getAllSheetData());
+  pushMeta();
 }
 
 function defaultState() {
@@ -1025,7 +1068,7 @@ let meta = loadMeta();
 
 function saveState() {
   try { localStorage.setItem(weekKey(), JSON.stringify(state)); } catch {}
-  pushToSheets(getAllSheetData());
+  pushState();
 }
 
 // ── All-time aggregation ──
@@ -1352,25 +1395,10 @@ function loadFromFile(event) {
   if (currentWeekOffset === 0) currentDay = todayIdx;
 })();
 
-// Pull from Sheets on load, then re-render with latest data
+// Initial render uses local cache (instant). Firebase 'value' listener
+// will fire shortly and replace it with the latest synced data.
+setSyncStatus('syncing', 'Connecting...');
 renderAll();
-pullFromSheets().then(data => {
-  if (data) {
-    state = loadState() || defaultState();
-    meta = loadMeta();
-    renderAll();
-  }
-});
-
-// Auto-refresh every 30 seconds
-setInterval(async () => {
-  const data = await pullFromSheets();
-  if (data) {
-    state = loadState() || defaultState();
-    meta = loadMeta();
-    renderAll();
-  }
-}, 30000);
 </script>
 </body>
 </html>
