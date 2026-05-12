@@ -492,6 +492,18 @@
     flex: 1;
   }
 
+  .bonus-progress {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
+  }
+  .bonus-progress.earned {
+    color: #2d6a4f;
+    font-weight: 500;
+  }
+
   .bonus-item-pts {
     font-family: 'DM Mono', monospace;
     font-size: 11px;
@@ -794,7 +806,7 @@
   <div class="bonus-section-header">
     <div>
       <div class="bonus-section-title">⚡ Weekly Bonuses</div>
-      <div class="bonus-section-sub">Completion-based · earned once per week · max 27 pts each</div>
+      <div class="bonus-section-sub">Auto-calculated from weekly checks · max 18 pts each</div>
     </div>
   </div>
   <div class="bonus-grid">
@@ -910,14 +922,47 @@ const CATEGORIES = [
   },
 ];
 
+// Each bonus defines its threshold and a checker function that counts qualifying days.
+// catIdx/itemIdx reference CATEGORIES indices; the checker returns the day count.
 const BONUSES = [
-  { label: 'Tracked ≥ 5 days', pts: 3 },
-  { label: 'Within calories ≥ 4 days', pts: 3 },
-  { label: 'Drank 8 glasses of water ≥ 5 days', pts: 3 },
-  { label: 'No late snacking ≥ 5 nights', pts: 3 },
-  { label: 'Sleep by 10:30 ≥ 5 nights', pts: 3 },
-  { label: '100 Club ≥ 5 days', pts: 3 },
+  {
+    label: 'Tracked ≥ 5 days', pts: 3, threshold: 5,
+    check: (s, p) => countDays(s, p, (d) => !!s.checks[`d${d}_p${p}_c1_i0`])
+  },
+  {
+    label: 'Within calories ≥ 4 days', pts: 3, threshold: 4,
+    check: (s, p) => countDays(s, p, (d) => !!s.checks[`d${d}_p${p}_c1_i1`])
+  },
+  {
+    label: 'Drank 8 glasses of water ≥ 5 days', pts: 3, threshold: 5,
+    check: (s, p) => countDays(s, p, (d) => !!s.checks[`d${d}_p${p}_c1_i3`])
+  },
+  {
+    label: 'No late snacking ≥ 5 nights', pts: 3, threshold: 5,
+    check: (s, p) => countDays(s, p, (d) => !!s.checks[`d${d}_p${p}_c2_i0`])
+  },
+  {
+    label: 'Sleep by 10:30 ≥ 5 nights', pts: 3, threshold: 5,
+    check: (s, p) => countDays(s, p, (d) => !!s.checks[`d${d}_p${p}_c2_i1`])
+  },
+  {
+    label: '100 Club ≥ 5 days', pts: 3, threshold: 5,
+    check: (s, p) => countDays(s, p, (d) => !!(s.checks[`d${d}_p${p}_c3_i0`] || s.checks[`d${d}_p${p}_c3_i1`]))
+  },
 ];
+
+// Count days 0–6 where predicate is true
+function countDays(s, p, predicate) {
+  let count = 0;
+  for (let d = 0; d < 7; d++) { if (predicate(d)) count++; }
+  return count;
+}
+
+// Check if a bonus is earned for a player given current state
+function isBonusEarned(bonusIdx, player, s) {
+  const b = BONUSES[bonusIdx];
+  return b.check(s, player) >= b.threshold;
+}
 
 const DAILY_MAX = CATEGORIES.reduce((sum, c) => sum + c.maxPts, 0);
 
@@ -1124,10 +1169,8 @@ function getAllTimeTotal(player) {
         });
         total += Math.min(dayPts, DAILY_MAX);
       }
-      // bonuses
-      BONUSES.forEach((b, i) => {
-        if (s.bonuses && s.bonuses[`p${player}_b${i}`]) total += b.pts;
-      });
+      // bonuses (auto-calculated from checks)
+      total += getBonusTotalFromState(s, player);
     } catch {}
   });
   return total;
@@ -1165,7 +1208,14 @@ function getWeekDailyTotal(player) {
 
 function getBonusTotal(player) {
   let t = 0;
-  BONUSES.forEach((b, i) => { if (state.bonuses[`p${player}_b${i}`]) t += b.pts; });
+  BONUSES.forEach((b, i) => { if (isBonusEarned(i, player, state)) t += b.pts; });
+  return t;
+}
+
+// For all-time, recalculate bonuses from each week's checks (ignore stored bonus flags)
+function getBonusTotalFromState(s, player) {
+  let t = 0;
+  BONUSES.forEach((b, i) => { if (isBonusEarned(i, player, s)) t += b.pts; });
   return t;
 }
 
@@ -1251,12 +1301,15 @@ function renderBonuses() {
     container.innerHTML = `<div class="bonus-player-name"><span style="width:8px;height:8px;border-radius:50%;background:${p===0?'var(--p1)':'var(--p2)'};display:inline-block;margin-right:6px;"></span>${name}</div>`;
 
     BONUSES.forEach((b, i) => {
-      const key = `p${p}_b${i}`;
-      const checked = !!state.bonuses[key];
+      const earned = isBonusEarned(i, p, state);
+      const count = b.check(state, p);
       const item = document.createElement('div');
-      item.className = 'bonus-item' + (checked ? ' checked' : '');
-      item.innerHTML = `<div class="bonus-check">${checked ? '✓' : ''}</div><div class="bonus-item-text">${b.label}</div><div class="bonus-item-pts">+${b.pts}</div>`;
-      item.onclick = () => { state.bonuses[key] = !state.bonuses[key]; saveState(); renderAll(); };
+      item.className = 'bonus-item' + (earned ? ' checked' : '');
+      item.style.cursor = 'default';
+      const progressLabel = earned
+        ? `<span class="bonus-progress earned">✓ Earned</span>`
+        : `<span class="bonus-progress">${count}/${b.threshold} days</span>`;
+      item.innerHTML = `<div class="bonus-check">${earned ? '✓' : ''}</div><div class="bonus-item-text">${b.label}</div>${progressLabel}<div class="bonus-item-pts">+${b.pts}</div>`;
       container.appendChild(item);
     });
 
