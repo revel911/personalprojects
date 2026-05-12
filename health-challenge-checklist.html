@@ -801,33 +801,6 @@
 <!-- Main checklist grid -->
 <div class="main" id="mainGrid"></div>
 
-<!-- Weekly bonuses -->
-<div class="bonus-section">
-  <div class="bonus-section-header">
-    <div>
-      <div class="bonus-section-title">⚡ Weekly Bonuses</div>
-      <div class="bonus-section-sub">Auto-calculated from weekly checks · max 18 pts each</div>
-    </div>
-  </div>
-  <div class="bonus-grid">
-    <div class="bonus-player p1-bonus" id="p1Bonuses"></div>
-    <div class="bonus-player p2-bonus" id="p2Bonuses"></div>
-  </div>
-  <div class="bonus-total-row">
-    <div class="bonus-total-label">Weekly Bonus Total</div>
-    <div class="bonus-totals">
-      <div class="bonus-total-item">
-        <div class="bonus-total-num p1-bonus-total" id="p1BonusTotal">0</div>
-        <div class="bonus-total-name" id="p1BonusName">P1</div>
-      </div>
-      <div class="bonus-total-item">
-        <div class="bonus-total-num p2-bonus-total" id="p2BonusTotal">0</div>
-        <div class="bonus-total-name" id="p2BonusName">P2</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Grand totals -->
 <div class="grand-total">
   <div class="grand-card p1-grand">
@@ -1169,8 +1142,7 @@ function getAllTimeTotal(player) {
         });
         total += Math.min(dayPts, DAILY_MAX);
       }
-      // bonuses (auto-calculated from checks)
-      total += getBonusTotalFromState(s, player);
+      // bonuses removed
     } catch {}
   });
   return total;
@@ -1319,17 +1291,14 @@ function renderBonuses() {
 }
 
 function renderScores() {
-  const bonusMax = BONUSES.reduce((s, b) => s + b.pts, 0);
-  const grandMax = DAILY_MAX * 7 + bonusMax;
+  const grandMax = DAILY_MAX * 7;
   [0, 1].forEach(p => {
     const daily = getWeekDailyTotal(p);
-    const bonus = getBonusTotal(p);
-    const grand = daily + bonus;
     const name = p === 0 ? meta.p1name : meta.p2name;
-    document.getElementById(`p${p+1}WeekScore`).textContent = grand;
-    document.getElementById(`p${p+1}Grand`).textContent = grand;
+    document.getElementById(`p${p+1}WeekScore`).textContent = daily;
+    document.getElementById(`p${p+1}Grand`).textContent = daily;
     document.getElementById(`p${p+1}GrandName`).textContent = name;
-    document.getElementById(`p${p+1}Breakdown`).textContent = `${daily} daily + ${bonus} bonus`;
+    document.getElementById(`p${p+1}Breakdown`).textContent = `${daily} pts this week`;
     document.getElementById(`p${p+1}GrandMax`).textContent = `/ ${grandMax} max`;
   });
 }
@@ -1363,7 +1332,6 @@ function renderAll() {
   renderWeekLabel();
   renderTabs();
   renderGrid();
-  renderBonuses();
   renderScores();
   renderAllTime();
   // sync name displays
